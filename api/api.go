@@ -54,6 +54,8 @@ func (s *ApiServer) Setup() *chi.Mux {
 	chatHandler := chatRoute.NewHandler(s.logger, *chatRepo, s.secretKey)
 
 	mux.Group(func(r chi.Router) {
+		r.Use(jwtauth.Verifier(s.tokenAuth))
+		r.Use(jwtauth.Authenticator)
 		msgHandler.RegisterRoutes(r)
 		chatHandler.RegisterRoutes(r)
 	})
