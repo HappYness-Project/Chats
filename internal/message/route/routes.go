@@ -6,15 +6,15 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/HappYness-Project/ChatBackendServer/common"
-	domain "github.com/HappYness-Project/ChatBackendServer/internal/message/domain"
-	"github.com/HappYness-Project/ChatBackendServer/loggers"
+	"github.com/HappYness-Project/chatApi/common"
+	domain "github.com/HappYness-Project/chatApi/internal/message/domain"
+	"github.com/HappYness-Project/chatApi/loggers"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
-	chatRepo "github.com/HappYness-Project/ChatBackendServer/internal/chat/repository"
-	msgRepo "github.com/HappYness-Project/ChatBackendServer/internal/message/repository"
+	chatRepo "github.com/HappYness-Project/chatApi/internal/chat/repository"
+	msgRepo "github.com/HappYness-Project/chatApi/internal/message/repository"
 	"github.com/go-chi/chi/v5"
 )
 

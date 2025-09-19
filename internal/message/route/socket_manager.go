@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"sync"
 
-	domain "github.com/HappYness-Project/ChatBackendServer/internal/message/domain"
-	"github.com/HappYness-Project/ChatBackendServer/loggers"
+	domain "github.com/HappYness-Project/chatApi/internal/message/domain"
+	"github.com/HappYness-Project/chatApi/loggers"
 	"github.com/gorilla/websocket"
 )
 

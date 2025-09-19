@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HappYness-Project/ChatBackendServer/common"
-	"github.com/HappYness-Project/ChatBackendServer/configs"
+	"github.com/HappYness-Project/chatApi/common"
+	"github.com/HappYness-Project/chatApi/configs"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
 )

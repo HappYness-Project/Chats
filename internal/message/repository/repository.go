@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 
-	domain "github.com/HappYness-Project/ChatBackendServer/internal/message/domain"
+	domain "github.com/HappYness-Project/chatApi/internal/message/domain"
 )
 
 type MessageRepository interface {

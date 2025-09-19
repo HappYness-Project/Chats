@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/HappYness-Project/ChatBackendServer/internal/chat/domain"
+	"github.com/HappYness-Project/chatApi/internal/chat/domain"
 	"github.com/google/uuid"
 )
 
@@ -208,7 +208,7 @@ func (r *ChatRepo) AddParticipantToChat(participant *domain.ChatParticipant) (*d
 }
 
 func (r *ChatRepo) DeleteParticipantFromChat(chatId, participantId string) error {
-	_, err := r.db.Exec(`DELETE FROM public.chat_participant 
+	_, err := r.db.Exec(`DELETE FROM public.chat_participant
 						 WHERE chat_id = $1 AND user_id = $2`, chatId, participantId)
 	return err
 }

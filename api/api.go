@@ -5,29 +5,34 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/HappYness-Project/ChatBackendServer/common"
-	chatRepo "github.com/HappYness-Project/ChatBackendServer/internal/chat/repository"
-	chatRoute "github.com/HappYness-Project/ChatBackendServer/internal/chat/route"
-	messageRepo "github.com/HappYness-Project/ChatBackendServer/internal/message/repository"
-	messageRoute "github.com/HappYness-Project/ChatBackendServer/internal/message/route"
+	"github.com/HappYness-Project/chatApi/common"
+	chatRepo "github.com/HappYness-Project/chatApi/internal/chat/repository"
+	chatRoute "github.com/HappYness-Project/chatApi/internal/chat/route"
+	messageRepo "github.com/HappYness-Project/chatApi/internal/message/repository"
+	messageRoute "github.com/HappYness-Project/chatApi/internal/message/route"
 
-	"github.com/HappYness-Project/ChatBackendServer/loggers"
+	"github.com/HappYness-Project/chatApi/loggers"
+	"github.com/HappYness-Project/chatApi/middlewares"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/jwtauth"
 )
 
 type ApiServer struct {
 	addr      string
 	secretKey string
 	db        *sql.DB
+	tokenAuth *jwtauth.JWTAuth
 	logger    *loggers.AppLogger
 }
 
 func NewApiServer(addr string, secretKey string, db *sql.DB, logger *loggers.AppLogger) *ApiServer {
-
+	tokenAuth := jwtauth.New("HS512", []byte(secretKey), nil)
 	return &ApiServer{
 		addr:      addr,
 		secretKey: secretKey,
 		db:        db,
+		tokenAuth: tokenAuth,
 		logger:    logger,
 	}
 }
@@ -37,6 +42,11 @@ func (s *ApiServer) Setup() *chi.Mux {
 
 	msgRepo := messageRepo.NewRepository(s.db)
 	chatRepo := chatRepo.NewRepository(s.db)
+
+	mux.Use(middleware.Logger)
+	mux.Use(middleware.Recoverer)
+	mux.Use(middlewares.RequestIdMiddleware)
+	mux.Use(middleware.Heartbeat("/ping"))
 
 	mux.Get("/", Home)
 	mux.Get("/health", Home)

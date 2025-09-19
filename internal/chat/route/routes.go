@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/HappYness-Project/ChatBackendServer/common"
-	domain "github.com/HappYness-Project/ChatBackendServer/internal/chat/domain"
-	"github.com/HappYness-Project/ChatBackendServer/internal/chat/repository"
-	"github.com/HappYness-Project/ChatBackendServer/loggers"
+	"github.com/HappYness-Project/chatApi/common"
+	domain "github.com/HappYness-Project/chatApi/internal/chat/domain"
+	"github.com/HappYness-Project/chatApi/internal/chat/repository"
+	"github.com/HappYness-Project/chatApi/loggers"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
 )
