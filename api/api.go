@@ -53,10 +53,13 @@ func (s *ApiServer) Setup() *chi.Mux {
 	msgHandler := messageRoute.NewHandler(s.logger, *msgRepo, *chatRepo, s.secretKey)
 	chatHandler := chatRoute.NewHandler(s.logger, *chatRepo, s.secretKey)
 
+	mux.Get("/api/chats/{chatID}/ws", msgHandler.HandleConnectionsByChatID)
 	mux.Group(func(r chi.Router) {
 		r.Use(jwtauth.Verifier(s.tokenAuth))
 		r.Use(jwtauth.Authenticator)
-		msgHandler.RegisterRoutes(r)
+
+		r.Get("/api/chats/{chatID}/messages", msgHandler.GetMessagesByChatID)
+		r.Get("/api/user-groups/{groupID}/messages", msgHandler.GetMessagesByGroupID)
 		chatHandler.RegisterRoutes(r)
 	})
 	go msgHandler.HandleMessages()

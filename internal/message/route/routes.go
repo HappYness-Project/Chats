@@ -40,7 +40,6 @@ func NewHandler(logger *loggers.AppLogger, repo msgRepo.MessageRepo, chatRepo ch
 }
 
 func (h *Handler) RegisterRoutes(router chi.Router) {
-	router.Get("/api/chats/{chatID}/ws", h.HandleConnectionsByChatID)
 	router.Get("/api/chats/{chatID}/messages", h.GetMessagesByChatID)
 	router.Get("/api/user-groups/{groupID}/messages", h.GetMessagesByGroupID)
 }
