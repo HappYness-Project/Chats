@@ -34,9 +34,6 @@ func (h *Handler) RegisterRoutes(router chi.Router) {
 	router.Post("/api/chats", h.CreateChat)
 	router.Delete("/api/chats/{chatID}", h.RemoveChat)
 	router.Delete("/api/user-groups/{groupID}/chat", h.RemoveChatByUserGroupId)
-	router.Get("/api/chats/{chatID}/chat-participants", h.GetChatParticipants)
-	router.Post("/api/chats/{chatID}/chat-participants", h.AddChatParticipant)
-	router.Delete("/api/chats/{chatID}/chat-participants/{userID}", h.DeleteParticipantFromChat)
 }
 func (h *Handler) GetChatById(w http.ResponseWriter, r *http.Request) {
 	chatID := chi.URLParam(r, "chatID")
@@ -129,18 +126,6 @@ func (h *Handler) CreateChat(w http.ResponseWriter, r *http.Request) {
 	var createdChat *domain.Chat
 
 	if request.UserId != "" {
-		participant, err := domain.NewChatParticipant(chat.Id, request.UserId, "admin", "active")
-		if err != nil {
-			h.logger.Error().Err(err).Msg("Failed to create chat participant")
-			common.ErrorResponse(w, http.StatusBadRequest, common.ProblemDetails{
-				Title:     "Invalid Request",
-				ErrorCode: "InvalidParticipantData",
-				Detail:    err.Error(),
-			})
-			return
-		}
-
-		createdChat, err = h.chatRepo.CreateChatWithParticipant(chat, participant)
 		if err != nil {
 			h.logger.Error().Err(err).Msg("Failed to create chat with participant")
 			common.ErrorResponse(w, http.StatusInternalServerError, common.ProblemDetails{
@@ -258,152 +243,6 @@ func (h *Handler) RemoveChatByUserGroupId(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (h *Handler) GetChatParticipants(w http.ResponseWriter, r *http.Request) {
-	chatID := chi.URLParam(r, "chatID")
-	if chatID == "" {
-		common.ErrorResponse(w, http.StatusBadRequest, common.ProblemDetails{
-			Title:     "Invalid Parameter",
-			ErrorCode: "MissingChatID",
-			Detail:    "chatID is required",
-		})
-		return
-	}
-
-	// Verify chat exists first
-	chat, err := h.chatRepo.GetChatById(chatID)
-	if err != nil {
-		h.logger.Error().Err(err).Msg("Failed to retrieve chat by ID")
-		common.ErrorResponse(w, http.StatusInternalServerError, common.ProblemDetails{
-			Title:  "Internal Server Error",
-			Detail: "Error occurred while retrieving chat",
-		})
-		return
-	}
-
-	if chat.Id == "" {
-		common.ErrorResponse(w, http.StatusNotFound, common.ProblemDetails{
-			Title:     "Not Found",
-			ErrorCode: "ChatNotFound",
-			Detail:    "Chat not found with the provided ID",
-		})
-		return
-	}
-
-	participants, err := h.chatRepo.GetChatParticipants(chatID)
-	if err != nil {
-		h.logger.Error().Err(err).Msg("Failed to retrieve chat participants")
-		common.ErrorResponse(w, http.StatusInternalServerError, common.ProblemDetails{
-			Title:  "Internal Server Error",
-			Detail: "Error occurred while retrieving chat participants",
-		})
-		return
-	}
-
-	common.WriteJsonWithEncode(w, http.StatusOK, map[string]interface{}{
-		"participants": participants,
-		"count":        len(participants),
-	})
-}
-
-func (h *Handler) AddChatParticipant(w http.ResponseWriter, r *http.Request) {
-	chatID := chi.URLParam(r, "chatID")
-	if chatID == "" {
-		common.ErrorResponse(w, http.StatusBadRequest, common.ProblemDetails{
-			Title:     "Invalid Parameter",
-			ErrorCode: "MissingChatID",
-			Detail:    "chatID is required",
-		})
-		return
-	}
-
-	var request AddParticipantRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		common.ErrorResponse(w, http.StatusBadRequest, common.ProblemDetails{
-			Title:     "Invalid Request Body",
-			ErrorCode: "InvalidJSON",
-			Detail:    "Unable to decode request body as JSON",
-		})
-		return
-	}
-
-	isParticipant, err := h.chatRepo.IsUserParticipantInChat(chatID, request.UserId)
-	if err != nil {
-		h.logger.Error().Err(err).Msg("Failed to check if user is participant")
-		common.ErrorResponse(w, http.StatusInternalServerError, common.ProblemDetails{
-			Title:  "Internal Server Error",
-			Detail: "Error occurred while checking participant status",
-		})
-		return
-	}
-	if isParticipant {
-		common.ErrorResponse(w, http.StatusConflict, common.ProblemDetails{
-			Title:     "Conflict",
-			ErrorCode: "UserAlreadyParticipant",
-			Detail:    "User is already a participant in this chat",
-		})
-		return
-	}
-
-	// Create participant using domain constructor (includes validation)
-	participant, err := domain.NewChatParticipant(chatID, request.UserId, domain.RoleMember, domain.StatusActive)
-	if err != nil {
-		common.ErrorResponse(w, http.StatusBadRequest, common.ProblemDetails{
-			Title:     "Invalid Request",
-			ErrorCode: "InvalidParticipantData",
-			Detail:    err.Error(),
-		})
-		return
-	}
-
-	createdParticipant, err := h.chatRepo.AddParticipantToChat(participant)
-	if err != nil {
-		h.logger.Error().Err(err).Msg("Failed to add participant to chat")
-		common.ErrorResponse(w, http.StatusInternalServerError, common.ProblemDetails{
-			Title:  "Internal Server Error",
-			Detail: "Error occurred while adding participant to chat",
-		})
-		return
-	}
-
-	common.WriteJsonWithEncode(w, http.StatusCreated, createdParticipant)
-}
-
-func (h *Handler) DeleteParticipantFromChat(w http.ResponseWriter, r *http.Request) {
-	chatID := chi.URLParam(r, "chatID")
-	if chatID == "" {
-		common.ErrorResponse(w, http.StatusBadRequest, common.ProblemDetails{
-			Title:     "Invalid Parameter",
-			ErrorCode: "MissingChatID",
-			Detail:    "chatID is required",
-		})
-		return
-	}
-
-	participantID := chi.URLParam(r, "userID")
-	if participantID == "" {
-		common.ErrorResponse(w, http.StatusBadRequest, common.ProblemDetails{
-			Title:     "Invalid Parameter",
-			ErrorCode: "MissingParticipantID",
-			Detail:    "participantID is required",
-		})
-		return
-	}
-
-	// Delete the participant from the chat
-	err := h.chatRepo.DeleteParticipantFromChat(chatID, participantID)
-	if err != nil {
-		h.logger.Error().Err(err).Msg("Failed to delete participant from chat")
-		common.ErrorResponse(w, http.StatusInternalServerError, common.ProblemDetails{
-			Title:  "Internal Server Error",
-			Detail: "Error occurred while removing participant from chat",
-		})
-		return
-	}
-
-	h.logger.Info().Msg("Successfully removed participant " + participantID + " from chat " + chatID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
