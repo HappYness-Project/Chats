@@ -33,7 +33,7 @@ func (r *MessageRepo) GetByChatID(chatID string, limit, offset int) ([]domain.Me
 		SELECT id, chat_id, sender_id, content, message_type, created_at, read_status
 		FROM message
 		WHERE chat_id = $1
-		ORDER BY created_at ASC
+		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3
 	`
 
