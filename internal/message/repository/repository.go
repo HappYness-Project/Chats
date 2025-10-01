@@ -31,10 +31,14 @@ func (r *MessageRepo) Create(message domain.Message) error {
 func (r *MessageRepo) GetByChatID(chatID string, limit, offset int) ([]domain.Message, error) {
 	query := `
 		SELECT id, chat_id, sender_id, content, message_type, created_at, read_status
-		FROM message
-		WHERE chat_id = $1
-		ORDER BY created_at DESC
-		LIMIT $2 OFFSET $3
+		FROM (
+			SELECT id, chat_id, sender_id, content, message_type, created_at, read_status
+			FROM message
+			WHERE chat_id = $1
+			ORDER BY created_at DESC
+			LIMIT $2 OFFSET $3
+		) AS recent_messages
+		ORDER BY created_at ASC
 	`
 
 	rows, err := r.db.Query(query, chatID, limit, offset)
@@ -53,39 +57,5 @@ func (r *MessageRepo) GetByChatID(chatID string, limit, offset int) ([]domain.Me
 		}
 		messages = append(messages, msg)
 	}
-
-	return messages, nil
-}
-func (r *MessageRepo) GetByUserGroup(userIDs []string, limit, offset int) ([]domain.Message, error) {
-	if len(userIDs) == 0 {
-		return []domain.Message{}, nil
-	}
-
-	query := `
-		SELECT DISTINCT m.id, m.chat_id, m.sender_id, m.content, m.message_type, m.created_at, m.read_status
-		FROM message m
-		INNER JOIN chat_participant cp ON m.chat_id = cp.chat_id
-		WHERE cp.user_id = ANY($1)
-		ORDER BY m.created_at ASC
-		LIMIT $2 OFFSET $3
-	`
-
-	rows, err := r.db.Query(query, userIDs, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var messages []domain.Message
-	for rows.Next() {
-		var msg domain.Message
-		err := rows.Scan(&msg.ID, &msg.ChatID, &msg.SenderID, &msg.Content,
-			&msg.MessageType, &msg.CreatedAt, &msg.ReadStatus)
-		if err != nil {
-			return nil, err
-		}
-		messages = append(messages, msg)
-	}
-
 	return messages, nil
 }
