@@ -4,13 +4,14 @@ import (
 	"database/sql"
 
 	domain "github.com/HappYness-Project/chatApi/internal/message/domain"
+	"github.com/google/uuid"
 )
 
 type MessageRepository interface {
 	Create(message domain.Message) error
-	GetByChatID(chatID string, limit, offset int) ([]domain.Message, error)
-	GetByUserGroup(userIDs []string, limit, offset int) ([]domain.Message, error)
-	SoftDelete(messageID, userID string) error
+	GetByChatID(chatID uuid.UUID, limit, offset int) ([]domain.Message, error)
+	GetByUserGroup(userIDs []uuid.UUID, limit, offset int) ([]domain.Message, error)
+	SoftDelete(messageID, userID uuid.UUID) error
 }
 
 type MessageRepo struct {
@@ -28,7 +29,7 @@ func (r *MessageRepo) Create(message domain.Message) error {
 
 	return err
 }
-func (r *MessageRepo) GetByChatID(chatID string, limit, offset int) ([]domain.Message, error) {
+func (r *MessageRepo) GetByChatID(chatID uuid.UUID, limit, offset int) ([]domain.Message, error) {
 	query := `
 		SELECT id, chat_id, sender_id, content, message_type, created_at, read_status, deleted_at, deleted_by
 		FROM (
@@ -60,7 +61,7 @@ func (r *MessageRepo) GetByChatID(chatID string, limit, offset int) ([]domain.Me
 	return messages, nil
 }
 
-func (r *MessageRepo) SoftDelete(messageID, userID string) error {
+func (r *MessageRepo) SoftDelete(messageID, userID uuid.UUID) error {
 	query := `
 		UPDATE message
 		SET deleted_at = CURRENT_TIMESTAMP, deleted_by = $2

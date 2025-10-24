@@ -101,7 +101,7 @@ func (h *Handler) HandleConnectionsByChatID(w http.ResponseWriter, r *http.Reque
 			continue
 		}
 
-		msg.ChatID = chat.Id
+		msg.ChatID = uuid.MustParse(chat.Id)
 		msg.CreatedAt = time.Now().UTC()
 		msg.MessageType = "text"
 
@@ -113,7 +113,7 @@ func (h *Handler) HandleMessages() {
 	for {
 		msg := <-h.wsManager.broadcast
 		id, _ := uuid.NewV7()
-		msg.ID = id.String()
+		msg.ID = id
 		if err := h.messageRepo.Create(msg); err != nil {
 			h.logger.Error().Err(err).Msg("Unable to create a message")
 			continue
@@ -126,11 +126,12 @@ func (h *Handler) HandleMessages() {
 }
 
 func (h *Handler) GetMessagesByChatID(w http.ResponseWriter, r *http.Request) {
-	chatID := chi.URLParam(r, "chatID")
-	if chatID == "" {
+	chatIDStr := chi.URLParam(r, "chatID")
+	if chatIDStr == "" {
 		http.Error(w, "chatID is required", http.StatusBadRequest)
 		return
 	}
+	chatID := uuid.MustParse(chatIDStr)
 
 	limitStr := r.URL.Query().Get("limit")
 	limit := 120

@@ -16,23 +16,33 @@ func setupMessageTestData(t *testing.T) {
 	_, err := testDB.Exec(`
 		INSERT INTO public.message(id, chat_id, sender_id, content, message_type, created_at, read_status, deleted_at, deleted_by)
 		VALUES
-		('01987073-0a87-7b32-9439-86868dfe9bd4', '01987073-0a87-7b32-9439-86868dfe9bd2', '01959b38-b3f9-7ec5-8ac8-e353bfe08a2d', 'Hello everyone!', 'text', '2024-01-01 10:00:00', false, NULL, NULL),
-		('01987073-0a87-7b32-9439-86868dfe9bd5', '01987073-0a87-7b32-9439-86868dfe9bd2', '01959b39-febd-770d-9e1b-e5ee392fce54', 'Hi there!', 'text', '2024-01-01 10:01:00', false, NULL, NULL),
-		('01987073-0a87-7b32-9439-86868dfe9bd6', '01987073-cf13-7621-af36-54ce20056d18', '0195c388-d0f4-77d5-be90-971d38344c74', 'Private message', 'text', '2024-01-01 10:02:00', true, NULL, NULL)
+		($1, $2, $3, 'Hello everyone!', 'text', '2024-01-01 10:00:00', false, NULL, NULL),
+		($4, $5, $6, 'Hi there!', 'text', '2024-01-01 10:01:00', false, NULL, NULL),
+		($7, $8, $9, 'Private message', 'text', '2024-01-01 10:02:00', true, NULL, NULL)
 		ON CONFLICT (id) DO NOTHING
-	`)
+	`,
+		uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd4"),
+		uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd2"),
+		uuid.MustParse("01959b38-b3f9-7ec5-8ac8-e353bfe08a2d"),
+		uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd5"),
+		uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd2"),
+		uuid.MustParse("01959b39-febd-770d-9e1b-e5ee392fce54"),
+		uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd6"),
+		uuid.MustParse("01987073-cf13-7621-af36-54ce20056d18"),
+		uuid.MustParse("0195c388-d0f4-77d5-be90-971d38344c74"),
+	)
 	require.NoError(t, err)
 }
 
 func cleanupMessageTestData(t *testing.T) {
 	_, err := testDB.Exec(`
 		DELETE FROM public.message
-		WHERE id IN (
-			'01987073-0a87-7b32-9439-86868dfe9bd4',
-			'01987073-0a87-7b32-9439-86868dfe9bd5',
-			'01987073-0a87-7b32-9439-86868dfe9bd6'
-		)
-	`)
+		WHERE id IN ($1, $2, $3)
+	`,
+		uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd4"),
+		uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd5"),
+		uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd6"),
+	)
 	require.NoError(t, err)
 }
 
@@ -49,14 +59,13 @@ func TestMessageRepository_Create(t *testing.T) {
 
 	t.Run("should create message successfully", func(t *testing.T) {
 		// Generate a new UUID for the message
-		messageUUID, err := uuid.NewV7()
+		messageID, err := uuid.NewV7()
 		require.NoError(t, err)
-		messageID := messageUUID.String()
 
 		message := entity.Message{
 			ID:          messageID,
-			ChatID:      "01987073-0a87-7b32-9439-86868dfe9bd2",
-			SenderID:    "01959b38-b3f9-7ec5-8ac8-e353bfe08a2d",
+			ChatID:      uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd2"),
+			SenderID:    uuid.MustParse("01959b38-b3f9-7ec5-8ac8-e353bfe08a2d"),
 			Content:     "Test message content",
 			MessageType: "text",
 			CreatedAt:   time.Now(),
@@ -94,14 +103,13 @@ func TestMessageRepository_Create(t *testing.T) {
 
 		for _, msgType := range messageTypes {
 			// Generate a new UUID for each message
-			messageUUID, err := uuid.NewV7()
+			messageID, err := uuid.NewV7()
 			require.NoError(t, err)
-			messageID := messageUUID.String()
 
 			message := entity.Message{
 				ID:          messageID,
-				ChatID:      "01987073-0a87-7b32-9439-86868dfe9bd2",
-				SenderID:    "01959b38-b3f9-7ec5-8ac8-e353bfe08a2d",
+				ChatID:      uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd2"),
+				SenderID:    uuid.MustParse("01959b38-b3f9-7ec5-8ac8-e353bfe08a2d"),
 				Content:     "Test " + msgType + " message",
 				MessageType: msgType,
 				CreatedAt:   time.Now(),
@@ -121,22 +129,25 @@ func TestMessageRepository_Create(t *testing.T) {
 		}
 	})
 
-	t.Run("should fail with invalid chat_id", func(t *testing.T) {
-		messageUUID, err := uuid.NewV7()
+	t.Run("should succeed with non-existent chat_id (no FK constraint)", func(t *testing.T) {
+		messageID, err := uuid.NewV7()
 		require.NoError(t, err)
-		messageID := messageUUID.String()
 
+		// Use a non-existent chat_id - should succeed since there's no FK constraint
 		message := entity.Message{
 			ID:          messageID,
-			ChatID:      "invalid-uuid",
-			SenderID:    "01959b38-b3f9-7ec5-8ac8-e353bfe08a2d",
+			ChatID:      uuid.MustParse("00000000-0000-0000-0000-000000000000"),
+			SenderID:    uuid.MustParse("01959b38-b3f9-7ec5-8ac8-e353bfe08a2d"),
 			Content:     "Test message",
 			MessageType: "text",
 			CreatedAt:   time.Now(),
 		}
 
 		err = repo.Create(message)
-		require.Error(t, err)
+		require.NoError(t, err)
+
+		// Cleanup
+		_, _ = testDB.Exec(`DELETE FROM public.message WHERE id = $1`, messageID)
 	})
 }
 
@@ -147,7 +158,7 @@ func TestMessageRepository_GetByChatID(t *testing.T) {
 	repo := repository.NewRepository(testDB)
 
 	t.Run("should return messages for existing chat", func(t *testing.T) {
-		chatID := "01987073-0a87-7b32-9439-86868dfe9bd2"
+		chatID := uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd2")
 
 		messages, err := repo.GetByChatID(chatID, 10, 0)
 
@@ -157,9 +168,9 @@ func TestMessageRepository_GetByChatID(t *testing.T) {
 
 		// Verify message structure and ordering (should be ASC by created_at)
 		for i, msg := range messages {
-			assert.NotEmpty(t, msg.ID)
+			assert.NotEqual(t, uuid.Nil, msg.ID)
 			assert.Equal(t, chatID, msg.ChatID)
-			assert.NotEmpty(t, msg.SenderID)
+			assert.NotEqual(t, uuid.Nil, msg.SenderID)
 			assert.NotEmpty(t, msg.Content)
 			assert.Contains(t, []string{"text", "image", "video", "audio", "file"}, msg.MessageType)
 			assert.False(t, msg.CreatedAt.IsZero())
@@ -172,7 +183,7 @@ func TestMessageRepository_GetByChatID(t *testing.T) {
 	})
 
 	t.Run("should return empty slice for non-existent chat", func(t *testing.T) {
-		nonExistentChatID := "01987073-0000-0000-0000-000000000000"
+		nonExistentChatID := uuid.MustParse("01987073-0000-0000-0000-000000000000")
 
 		messages, err := repo.GetByChatID(nonExistentChatID, 10, 0)
 
@@ -181,7 +192,7 @@ func TestMessageRepository_GetByChatID(t *testing.T) {
 	})
 
 	t.Run("should respect limit and offset parameters", func(t *testing.T) {
-		chatID := "01987073-0a87-7b32-9439-86868dfe9bd2"
+		chatID := uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd2")
 
 		// Get first message only
 		messages, err := repo.GetByChatID(chatID, 1, 0)
@@ -213,14 +224,13 @@ func TestMessageRepository_MessagePersistence(t *testing.T) {
 
 	t.Run("should persist and retrieve message with all fields", func(t *testing.T) {
 		// Create a message
-		messageUUID, err := uuid.NewV7()
+		messageID, err := uuid.NewV7()
 		require.NoError(t, err)
-		messageID := messageUUID.String()
 
 		originalMessage := entity.Message{
 			ID:          messageID,
-			ChatID:      "01987073-0a87-7b32-9439-86868dfe9bd2",
-			SenderID:    "01959b38-b3f9-7ec5-8ac8-e353bfe08a2d",
+			ChatID:      uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd2"),
+			SenderID:    uuid.MustParse("01959b38-b3f9-7ec5-8ac8-e353bfe08a2d"),
 			Content:     "Test persistence message with special chars: 안녕하세요 여러분 🎉",
 			MessageType: "text",
 			CreatedAt:   time.Now().Truncate(time.Microsecond), // Truncate to match DB precision
