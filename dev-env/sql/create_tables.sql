@@ -45,9 +45,11 @@ CREATE TABLE IF NOT EXISTS public.message (
     chat_id UUID NOT NULL,
     sender_id UUID NOT NULL,
     content TEXT NOT NULL,
-    message_type VARCHAR(20) NOT NULL DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'video', 'audio', 'file')),
+    message_type VARCHAR(20) NOT NULL DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'video', 'audio', 'file', 'delete')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    read_status BOOLEAN DEFAULT FALSE
+    read_status BOOLEAN DEFAULT FALSE,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    deleted_by UUID
 );
 
 CREATE TABLE IF NOT EXISTS public.chat (
