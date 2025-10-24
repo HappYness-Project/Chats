@@ -58,9 +58,8 @@ func (s *ApiServer) Setup() *chi.Mux {
 		r.Use(jwtauth.Verifier(s.tokenAuth))
 		r.Use(jwtauth.Authenticator)
 
-		r.Get("/api/chats/{chatID}/messages", msgHandler.GetMessagesByChatID)
-		r.Get("/api/user-groups/{groupID}/messages", msgHandler.GetMessagesByGroupID)
 		chatHandler.RegisterRoutes(r)
+		msgHandler.RegisterRoutes(r)
 	})
 	go msgHandler.HandleMessages()
 	return mux
