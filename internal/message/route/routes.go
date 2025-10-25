@@ -101,8 +101,7 @@ func (h *Handler) HandleConnectionsByChatID(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		if msg.MessageType == "delete" {
-
+		if msg.DeletedBy.String() != "" {
 			err := h.messageRepo.SoftDelete(msg.ID, userID)
 			if err != nil {
 				h.logger.Error().Err(err).Str("messageID", msg.ID.String()).Msg("Failed to delete message")
@@ -110,13 +109,11 @@ func (h *Handler) HandleConnectionsByChatID(w http.ResponseWriter, r *http.Reque
 			}
 
 			h.logger.Info().Str("messageID", msg.ID.String()).Str("userID", userID.String()).Msg("Message deleted successfully")
-
-			// Broadcast deletion to all connected clients
+			deletedAt := time.Now().UTC()
 			deleteNotification := domain.Message{
-				ID:          msg.ID,
-				ChatID:      chat.Id,
-				MessageType: "delete",
-				CreatedAt:   time.Now().UTC(),
+				ID:        msg.ID,
+				ChatID:    chat.Id,
+				DeletedAt: &deletedAt,
 			}
 			h.wsManager.SendToClients(deleteNotification, h.logger)
 			continue
