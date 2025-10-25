@@ -15,7 +15,7 @@ func main() {
 	fmt.Println("Current Environment : " + current_env)
 	env := configs.InitConfig(current_env)
 	logger := loggers.Setup(env)
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s timezone=UTC connect_timeout=5 ",
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s timezone=UTC connect_timeout=5 search_path=chat,public ",
 		env.DBHost, env.DBPort, env.DBUser, env.DBPwd, env.DBName)
 	if current_env == "local" || current_env == "" {
 		connStr += "sslmode=disable"

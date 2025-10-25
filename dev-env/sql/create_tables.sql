@@ -11,6 +11,9 @@ SET row_security = off;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 
+-- Create chat schema for the chat microservice
+CREATE SCHEMA IF NOT EXISTS chat;
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public; -- To use uuid_generate_v7 custom function.
 
 -- Creating uuid generate v7 method - this feature is not implemented in postgres 17 yet.
@@ -40,7 +43,7 @@ language plpgsql
 volatile;
 
 -- Messages table - stores the actual chat messages
-CREATE TABLE IF NOT EXISTS public.message (
+CREATE TABLE IF NOT EXISTS chat.message (
     id UUID PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     chat_id UUID NOT NULL,
     sender_id UUID NOT NULL,
@@ -52,7 +55,7 @@ CREATE TABLE IF NOT EXISTS public.message (
     deleted_by UUID
 );
 
-CREATE TABLE IF NOT EXISTS public.chat (
+CREATE TABLE IF NOT EXISTS chat.chat (
     id uuid NOT NULL,
     type CHARACTER VARYING(20) NOT NULL CHECK (type IN ('private', 'group', 'container')),
     usergroup_id bigint,
@@ -61,9 +64,9 @@ CREATE TABLE IF NOT EXISTS public.chat (
     CONSTRAINT pk_chat PRIMARY KEY (id)
 );
 
-INSERT INTO public.chat(id, type, usergroup_id, container_id, created_at) VALUES ('01987073-0a87-7b32-9439-86868dfe9bd2', 'group', 1, NULL, CURRENT_TIMESTAMP);
-INSERT INTO public.chat(id, type, usergroup_id, container_id, created_at) VALUES ('01987073-cf13-7621-af36-54ce20056d18', 'group', 2, NULL, CURRENT_TIMESTAMP);
-INSERT INTO public.chat(id, type, usergroup_id, container_id, created_at) VALUES ('01987075-16cb-7337-af15-cd28f64c93a3', 'group', 3, NULL, CURRENT_TIMESTAMP);
-INSERT INTO public.chat(id, type, usergroup_id, container_id, created_at) VALUES ('01987074-1f7f-7aad-ad76-a4b83544fa2d', 'group', 4, NULL, CURRENT_TIMESTAMP);
-INSERT INTO public.chat(id, type, usergroup_id, container_id, created_at) VALUES ('01987074-440c-73f8-aa5b-ba2b50a19395', 'group', 5, NULL, CURRENT_TIMESTAMP);
+INSERT INTO chat.chat(id, type, usergroup_id, container_id, created_at) VALUES ('01987073-0a87-7b32-9439-86868dfe9bd2', 'group', 1, NULL, CURRENT_TIMESTAMP);
+INSERT INTO chat.chat(id, type, usergroup_id, container_id, created_at) VALUES ('01987073-cf13-7621-af36-54ce20056d18', 'group', 2, NULL, CURRENT_TIMESTAMP);
+INSERT INTO chat.chat(id, type, usergroup_id, container_id, created_at) VALUES ('01987075-16cb-7337-af15-cd28f64c93a3', 'group', 3, NULL, CURRENT_TIMESTAMP);
+INSERT INTO chat.chat(id, type, usergroup_id, container_id, created_at) VALUES ('01987074-1f7f-7aad-ad76-a4b83544fa2d', 'group', 4, NULL, CURRENT_TIMESTAMP);
+INSERT INTO chat.chat(id, type, usergroup_id, container_id, created_at) VALUES ('01987074-440c-73f8-aa5b-ba2b50a19395', 'group', 5, NULL, CURRENT_TIMESTAMP);
 

@@ -14,7 +14,7 @@ import (
 func setupMessageTestData(t *testing.T) {
 	// Insert test messages for existing chats
 	_, err := testDB.Exec(`
-		INSERT INTO public.message(id, chat_id, sender_id, content, message_type, created_at, read_status, deleted_at, deleted_by)
+		INSERT INTO message(id, chat_id, sender_id, content, message_type, created_at, read_status, deleted_at, deleted_by)
 		VALUES
 		($1, $2, $3, 'Hello everyone!', 'text', '2024-01-01 10:00:00', false, NULL, NULL),
 		($4, $5, $6, 'Hi there!', 'text', '2024-01-01 10:01:00', false, NULL, NULL),
@@ -36,7 +36,7 @@ func setupMessageTestData(t *testing.T) {
 
 func cleanupMessageTestData(t *testing.T) {
 	_, err := testDB.Exec(`
-		DELETE FROM public.message
+		DELETE FROM message
 		WHERE id IN ($1, $2, $3)
 	`,
 		uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd4"),
@@ -78,7 +78,7 @@ func TestMessageRepository_Create(t *testing.T) {
 		var dbMessage entity.Message
 		err = testDB.QueryRow(`
 			SELECT id, chat_id, sender_id, content, message_type, created_at, read_status, deleted_at, deleted_by
-			FROM public.message WHERE id = $1
+			FROM message WHERE id = $1
 		`, messageID).Scan(
 			&dbMessage.ID, &dbMessage.ChatID, &dbMessage.SenderID,
 			&dbMessage.Content, &dbMessage.MessageType, &dbMessage.CreatedAt, &dbMessage.ReadStatus,
@@ -95,7 +95,7 @@ func TestMessageRepository_Create(t *testing.T) {
 		assert.False(t, dbMessage.CreatedAt.IsZero())
 
 		// Cleanup
-		_, _ = testDB.Exec(`DELETE FROM public.message WHERE id = $1`, messageID)
+		_, _ = testDB.Exec(`DELETE FROM message WHERE id = $1`, messageID)
 	})
 
 	t.Run("should handle different message types", func(t *testing.T) {
@@ -120,12 +120,12 @@ func TestMessageRepository_Create(t *testing.T) {
 
 			// Verify message type was saved correctly
 			var savedType string
-			err = testDB.QueryRow(`SELECT message_type FROM public.message WHERE id = $1`, messageID).Scan(&savedType)
+			err = testDB.QueryRow(`SELECT message_type FROM message WHERE id = $1`, messageID).Scan(&savedType)
 			require.NoError(t, err)
 			assert.Equal(t, msgType, savedType)
 
 			// Cleanup
-			_, _ = testDB.Exec(`DELETE FROM public.message WHERE id = $1`, messageID)
+			_, _ = testDB.Exec(`DELETE FROM message WHERE id = $1`, messageID)
 		}
 	})
 
@@ -147,7 +147,7 @@ func TestMessageRepository_Create(t *testing.T) {
 		require.NoError(t, err)
 
 		// Cleanup
-		_, _ = testDB.Exec(`DELETE FROM public.message WHERE id = $1`, messageID)
+		_, _ = testDB.Exec(`DELETE FROM message WHERE id = $1`, messageID)
 	})
 }
 
@@ -261,6 +261,6 @@ func TestMessageRepository_MessagePersistence(t *testing.T) {
 		assert.True(t, originalMessage.CreatedAt.Equal(foundMessage.CreatedAt.Truncate(time.Microsecond)))
 
 		// Cleanup
-		_, _ = testDB.Exec(`DELETE FROM public.message WHERE id = $1`, messageID)
+		_, _ = testDB.Exec(`DELETE FROM message WHERE id = $1`, messageID)
 	})
 }

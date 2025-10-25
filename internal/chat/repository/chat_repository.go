@@ -24,7 +24,7 @@ func NewRepository(db *sql.DB) *ChatRepo {
 
 func (r *ChatRepo) GetChatById(chatId uuid.UUID) (*domain.Chat, error) {
 	rows, err := r.db.Query(`SELECT id, type, usergroup_id, container_id, created_at
-							FROM public.chat
+							FROM chat
 							WHERE id = $1`, chatId)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (r *ChatRepo) GetChatById(chatId uuid.UUID) (*domain.Chat, error) {
 
 func (r *ChatRepo) GetChatByGroupID(groupID int) (*domain.Chat, error) {
 	rows, err := r.db.Query(`SELECT id, type, usergroup_id, container_id, created_at
-							FROM public.chat
+							FROM chat
 							WHERE usergroup_id = $1`, groupID)
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func (r *ChatRepo) GetChatByGroupID(groupID int) (*domain.Chat, error) {
 }
 
 func (r *ChatRepo) CreateChat(chat *domain.Chat) (*domain.Chat, error) {
-	_, err := r.db.Exec(`INSERT INTO public.chat (id, type, usergroup_id, container_id, created_at)
+	_, err := r.db.Exec(`INSERT INTO chat (id, type, usergroup_id, container_id, created_at)
 						VALUES ($1, $2, $3, $4, $5)`,
 		chat.Id, chat.Type.String(), chat.UserGroupId, chat.ContainerId, chat.CreatedAt)
 	if err != nil {
@@ -77,7 +77,7 @@ func (r *ChatRepo) CreateChat(chat *domain.Chat) (*domain.Chat, error) {
 }
 
 func (r *ChatRepo) DeleteChat(chatId uuid.UUID) error {
-	_, err := r.db.Exec(`DELETE FROM public.chat WHERE id = $1`, chatId)
+	_, err := r.db.Exec(`DELETE FROM chat WHERE id = $1`, chatId)
 	return err
 }
 

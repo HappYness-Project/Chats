@@ -19,7 +19,7 @@ var testDB *sql.DB
 
 func TestMain(m *testing.M) {
 	var err error
-	dsn := "postgres://postgres:postgres@localhost:8020/postgres?sslmode=disable"
+	dsn := "postgres://postgres:postgres@localhost:8020/postgres?sslmode=disable&search_path=chat,public"
 
 	testDB, err = dbs.ConnectToDb(dsn)
 	if err != nil {
@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 
 func setupTestData(t *testing.T) {
 	_, err := testDB.Exec(`
-		INSERT INTO public.chat(id, type, usergroup_id, container_id, created_at)
+		INSERT INTO chat(id, type, usergroup_id, container_id, created_at)
 		VALUES
 		($1, 'group', 100, NULL, CURRENT_TIMESTAMP),
 		($2, 'group', 2, NULL, CURRENT_TIMESTAMP),
@@ -53,7 +53,7 @@ func setupTestData(t *testing.T) {
 
 func cleanupTestData(t *testing.T) {
 	_, err := testDB.Exec(`
-		DELETE FROM public.chat
+		DELETE FROM chat
 		WHERE id IN ($1, $2, $3)
 	`,
 		uuid.MustParse("01987073-0a87-7b32-9439-86868dfe9bd3"),
@@ -165,7 +165,7 @@ func TestChatRepository_CreateChat(t *testing.T) {
 		assert.False(t, createdChat.CreatedAt.IsZero())
 		assert.True(t, createdChat.CreatedAt.After(time.Now().Add(-time.Minute)))
 
-		_, _ = testDB.Exec(`DELETE FROM public.chat WHERE id = $1`, createdChat.Id)
+		_, _ = testDB.Exec(`DELETE FROM chat WHERE id = $1`, createdChat.Id)
 	})
 }
 func TestChatRepository_DeleteChat(t *testing.T) {
@@ -253,6 +253,6 @@ func TestChatRepository_DeleteChat(t *testing.T) {
 		assert.Equal(t, createdChat2.Id, existingChat.Id)
 
 		// Cleanup
-		_, _ = testDB.Exec(`DELETE FROM public.chat WHERE id = $1`, createdChat2.Id)
+		_, _ = testDB.Exec(`DELETE FROM chat WHERE id = $1`, createdChat2.Id)
 	})
 }
