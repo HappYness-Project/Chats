@@ -81,6 +81,10 @@ func (h *Handler) HandleConnectionsByChatID(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Extract user ID from JWT token for authorization
+	tokenString := r.URL.Query().Get("token")
+	userID := h.extractUserIDFromToken(tokenString)
+
 	for {
 		var msg domain.Message
 		err := conn.ReadJSON(&msg)
@@ -98,12 +102,34 @@ func (h *Handler) HandleConnectionsByChatID(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
+		if msg.MessageType == "delete" {
+
+			err := h.messageRepo.SoftDelete(msg.ID, userID)
+			if err != nil {
+				h.logger.Error().Err(err).Str("messageID", msg.ID.String()).Msg("Failed to delete message")
+				continue
+			}
+
+			h.logger.Info().Str("messageID", msg.ID.String()).Str("userID", userID.String()).Msg("Message deleted successfully")
+
+			// Broadcast deletion to all connected clients
+			deleteNotification := domain.Message{
+				ID:          msg.ID,
+				ChatID:      chat.Id,
+				MessageType: "delete",
+				CreatedAt:   time.Now().UTC(),
+			}
+			h.wsManager.SendToClients(deleteNotification, h.logger)
+			continue
+		}
+
 		// Skip empty messages or messages without content (likely ping/control messages)
 		if msg.Content == "" {
 			continue
 		}
 
 		msg.ChatID = chat.Id
+		msg.SenderID = userID
 		msg.CreatedAt = time.Now().UTC()
 		msg.MessageType = "text"
 
@@ -202,4 +228,36 @@ func (h *Handler) validateJWTToken(tokenString string) bool {
 
 	h.logger.Error().Msg("Invalid JWT token claims")
 	return false
+}
+
+func (h *Handler) extractUserIDFromToken(tokenString string) uuid.UUID {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if token.Method != jwt.SigningMethodHS512 {
+			return nil, fmt.Errorf("unexpected signing method: %v, expected HS512", token.Header["alg"])
+		}
+		return h.jwtSecret, nil
+	})
+
+	if err != nil {
+		h.logger.Error().Err(err).Msg("JWT parsing error")
+		return uuid.Nil
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		// Try to extract user_id from claims
+		if userIDStr, ok := claims["user_id"].(string); ok {
+			if userID, err := uuid.Parse(userIDStr); err == nil {
+				return userID
+			}
+		}
+		// Alternative: try "sub" (subject) claim
+		if sub, ok := claims["sub"].(string); ok {
+			if userID, err := uuid.Parse(sub); err == nil {
+				return userID
+			}
+		}
+	}
+
+	h.logger.Error().Msg("Could not extract user ID from JWT token")
+	return uuid.Nil
 }
