@@ -9,13 +9,13 @@ import (
 	"github.com/HappYness-Project/chatApi/common"
 	domain "github.com/HappYness-Project/chatApi/internal/message/domain"
 	"github.com/HappYness-Project/chatApi/loggers"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
 	chatRepo "github.com/HappYness-Project/chatApi/internal/chat/repository"
 	msgRepo "github.com/HappYness-Project/chatApi/internal/message/repository"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/jwtauth/v5"
 )
 
 type Handler struct {
@@ -23,17 +23,18 @@ type Handler struct {
 	messageRepo msgRepo.MessageRepo
 	chatRepo    chatRepo.ChatRepo
 	wsManager   *WebSocketManager
-	jwtSecret   []byte
+	tokenAuth   *jwtauth.JWTAuth
 }
 
 func NewHandler(logger *loggers.AppLogger, repo msgRepo.MessageRepo, chatRepo chatRepo.ChatRepo, secretKey string) *Handler {
 	wsManager := NewWebSocketManager(logger)
+	tokenAuth := jwtauth.New("HS512", []byte(secretKey), nil)
 	handler := &Handler{
 		logger:      logger,
 		messageRepo: repo,
 		chatRepo:    chatRepo,
 		wsManager:   wsManager,
-		jwtSecret:   []byte(secretKey),
+		tokenAuth:   tokenAuth,
 	}
 	return handler
 }
@@ -204,53 +205,60 @@ func (h *Handler) authenticateRequest(_ http.ResponseWriter, r *http.Request) bo
 }
 
 func (h *Handler) validateJWTToken(tokenString string) bool {
-	// TODO: Implement real JWT validation
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if token.Method != jwt.SigningMethodHS512 {
-			return nil, fmt.Errorf("unexpected signing method: %v, expected HS512", token.Header["alg"])
-		}
-		return h.jwtSecret, nil
-	})
-
+	token, err := h.tokenAuth.Decode(tokenString)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("JWT parsing error")
 		return false
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		h.logger.Info().Interface("claims", claims).Msg("JWT token validated successfully")
-		return true
+	if token == nil {
+		h.logger.Error().Msg("JWT token is nil")
+		return false
 	}
 
-	h.logger.Error().Msg("Invalid JWT token claims")
-	return false
+	// Check expiration manually
+	if exp, ok := token.Get("exp"); ok {
+		if expTime, ok := exp.(time.Time); ok && time.Now().After(expTime) {
+			h.logger.Error().Msg("JWT token is expired")
+			return false
+		}
+	}
+
+	h.logger.Info().Interface("claims", token.PrivateClaims()).Msg("JWT token validated successfully")
+	return true
 }
 
 func (h *Handler) extractUserIDFromToken(tokenString string) uuid.UUID {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if token.Method != jwt.SigningMethodHS512 {
-			return nil, fmt.Errorf("unexpected signing method: %v, expected HS512", token.Header["alg"])
-		}
-		return h.jwtSecret, nil
-	})
-
+	token, err := h.tokenAuth.Decode(tokenString)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("JWT parsing error")
 		return uuid.Nil
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		// Try to extract user_id from claims
-		if userIDStr, ok := claims["user_id"].(string); ok {
-			if userID, err := uuid.Parse(userIDStr); err == nil {
-				return userID
-			}
+	if token == nil {
+		h.logger.Error().Msg("JWT token is nil")
+		return uuid.Nil
+	}
+
+	// Check expiration manually
+	if exp, ok := token.Get("exp"); ok {
+		if expTime, ok := exp.(time.Time); ok && time.Now().After(expTime) {
+			h.logger.Error().Msg("JWT token is expired")
+			return uuid.Nil
 		}
-		// Alternative: try "sub" (subject) claim
-		if sub, ok := claims["sub"].(string); ok {
-			if userID, err := uuid.Parse(sub); err == nil {
-				return userID
-			}
+	}
+
+	claims := token.PrivateClaims()
+	if userIDStr, ok := claims["nameid"].(string); ok {
+		if userID, err := uuid.Parse(userIDStr); err == nil {
+			return userID
+		}
+	}
+
+	// Alternative: try "sub" (subject) claim
+	if sub, ok := claims["sub"].(string); ok {
+		if userID, err := uuid.Parse(sub); err == nil {
+			return userID
 		}
 	}
 
