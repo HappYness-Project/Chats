@@ -62,6 +62,21 @@ func (h *Handler) HandleConnectionsByChatID(w http.ResponseWriter, r *http.Reque
 
 	chatID := uuid.MustParse(chatIDStr)
 
+	// Extract user ID from JWT token for authorization BEFORE upgrading connection
+	tokenString := r.URL.Query().Get("token")
+	userID := h.extractUserIDFromToken(tokenString)
+
+	// Validate that we successfully extracted a user ID
+	if userID == uuid.Nil {
+		h.logger.Error().Msg("Failed to extract valid user ID from token")
+		common.ErrorResponse(w, http.StatusUnauthorized, common.ProblemDetails{
+			Title:     "Unauthorized",
+			ErrorCode: "InvalidToken",
+			Detail:    "Could not extract user ID from token",
+		})
+		return
+	}
+
 	conn, err := h.wsManager.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		h.logger.Error().Err(err).Msg(err.Error())
@@ -81,10 +96,6 @@ func (h *Handler) HandleConnectionsByChatID(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Extract user ID from JWT token for authorization
-	tokenString := r.URL.Query().Get("token")
-	userID := h.extractUserIDFromToken(tokenString)
-
 	for {
 		var msg domain.Message
 		err := conn.ReadJSON(&msg)
@@ -102,7 +113,7 @@ func (h *Handler) HandleConnectionsByChatID(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		if msg.DeletedBy.String() != "" {
+		if msg.DeletedBy != nil && *msg.DeletedBy != uuid.Nil {
 			err := h.messageRepo.SoftDelete(msg.ID, userID)
 			if err != nil {
 				h.logger.Error().Err(err).Str("messageID", msg.ID.String()).Msg("Failed to delete message")
