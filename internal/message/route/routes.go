@@ -82,14 +82,14 @@ func (h *Handler) HandleConnectionsByChatID(w http.ResponseWriter, r *http.Reque
 		h.logger.Error().Err(err).Msg(err.Error())
 		return
 	}
-	defer h.wsManager.RemoveClient(conn)
+	defer h.wsManager.RemoveClient(chatID, conn)
 
 	// Set up Pong handler to respond to client Pings automatically
 	conn.SetPongHandler(func(string) error {
 		return conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	})
 
-	h.wsManager.AddClient(conn)
+	h.wsManager.AddClient(chatID, conn)
 	chat, err := h.chatRepo.GetChatById(chatID)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Error occurred during getting chat by user group. " + err.Error())
